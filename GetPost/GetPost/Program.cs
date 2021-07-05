@@ -24,45 +24,34 @@ namespace GetPost
 
 
         public static async Task Main(string[] args)
-        {
-            try
-            {
-                CreateFile();
-
+        {          
                 _cts.CancelAfter(10000);
                 for (int i = _startCounter; i <= _finishCounter; i++)
                 {
-                    await MakeACallToPost(i);
+                    await MakeACallToPostAndWriteToFile(i);
                 }
 
                 await ReadFromFile();
+                
+                _cts.Dispose();
+        }
+        static async Task MakeACallToPostAndWriteToFile(int id)
+        {
+            try
+            {
+                var response = await _client.GetAsync($"https://jsonplaceholder.typicode.com/posts/{id}", _cts.Token);
+                var content = await response.Content.ReadAsStringAsync();
+
+                var json = JsonConvert.DeserializeObject<JsonStructure>(content);
+
+                await WriteToFile(String.Concat(json.UserId, "\n", json.Id, "\n", json.Title, "\n", json.Body, "\n\n"));
             }
             catch (TaskCanceledException)
             {
                 Console.WriteLine("Fetching posts is cancelled...");
             }
-            finally
-            {
-                _cts.Dispose();
-            }
-        }
-        static async Task MakeACallToPost(int id)
-        {
-            var response = await _client.GetAsync($"https://jsonplaceholder.typicode.com/posts/{id}", _cts.Token);
-            var content = await response.Content.ReadAsStringAsync();
-
-            var json = JsonConvert.DeserializeObject<JsonStructure>(content);
-         
-            await WriteToFile(String.Concat(json.UserId, "\n", json.Id, "\n", json.Title, "\n", json.Body,"\n\n"));
         }
 
-        static void CreateFile()
-        {
-            using (FileStream fstream = new FileStream($"{_fileName}", FileMode.Create))
-            {
-
-            }
-        }
 
         static async Task  WriteToFile(String content)
         {
@@ -99,26 +88,9 @@ namespace GetPost
                 }
                 catch
                 {
-                    Console.WriteLine("Cannot read to file...");
+                    Console.WriteLine("Cannot read from file...");
                 }
             }
-        }
-
-        static long GetFileLength(string filename)
-        {
-            long retval;
-            try
-            {
-                FileInfo fi = new FileInfo(filename);
-                retval = fi.Length;
-            }
-            catch (System.IO.FileNotFoundException)
-            {
-                // If a file is no longer present,  
-                // just add zero bytes to the total.  
-                retval = 0;
-            }
-            return retval;
         }
 
     }
